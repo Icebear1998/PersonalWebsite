@@ -6,12 +6,14 @@ import ProjectsPage from "./pages/ProjectsPage";
 import BlogPost from "./pages/BlogPost";
 import Layout from "./components/layout/Layout";
 import routes from "tempo-routes";
+import SupabaseTest from "./components/SupabaseTest";
 
 function App() {
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <>
         <Layout>
+          <SupabaseTest />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/blogs" element={<BlogsPage />} />
