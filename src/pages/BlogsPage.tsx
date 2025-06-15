@@ -1,71 +1,54 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/Sidebar";
-
-interface BlogPost {
-  id: string;
-  title: string;
-  category: string;
-  date: string;
-  image: string;
-  excerpt: string;
-}
+import { supabase, BlogPost } from "@/lib/supabase";
 
 const BlogsPage = () => {
-  // Mock data for blog posts
-  const blogPosts: BlogPost[] = [
-    {
-      id: "1",
-      title: "How can we sing about love?",
-      category: "Journey",
-      date: "3 years ago",
-      image:
-        "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80",
-      excerpt:
-        "Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum.",
-    },
-    {
-      id: "2",
-      title: "The king is made of paper",
-      category: "Lifestyle",
-      date: "3 years ago",
-      image:
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80",
-      excerpt:
-        "Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum.",
-    },
-    {
-      id: "3",
-      title: "Oh, I guess they have the blues",
-      category: "Lifestyle",
-      date: "3 years ago",
-      image:
-        "https://images.unsplash.com/photo-1492724441997-5dc865305da7?w=800&q=80",
-      excerpt:
-        "Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum.",
-    },
-    {
-      id: "4",
-      title: "The art of minimalism",
-      category: "Design",
-      date: "2 years ago",
-      image:
-        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-      excerpt:
-        "Exploring the principles of minimalist design and how it can improve user experience and visual clarity.",
-    },
-    {
-      id: "5",
-      title: "Building scalable web applications",
-      category: "Development",
-      date: "1 year ago",
-      image:
-        "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=800&q=80",
-      excerpt:
-        "A comprehensive guide to building web applications that can handle growth and maintain performance.",
-    },
-  ];
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBlogPosts();
+  }, []);
+
+  const fetchBlogPosts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("blogs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setBlogPosts(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 30) {
+      return `${diffDays} days ago`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} month${months > 1 ? "s" : ""} ago`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      return `${years} year${years > 1 ? "s" : ""} ago`;
+    }
+  };
 
   // Mock data for popular stories
   const popularStories = [
@@ -118,65 +101,110 @@ const BlogsPage = () => {
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Main content area */}
           <div className="lg:w-2/3">
-            {/* Blog posts section */}
-            <div className="space-y-12">
-              {blogPosts.map((post) => (
-                <article key={post.id} className="group">
-                  <div className="mb-3">
-                    <span className="text-sm text-gray-500">
-                      {post.date} in {post.category}
-                    </span>
-                  </div>
-                  <h2 className="text-2xl font-semibold mb-4 group-hover:text-blue-600 transition-colors">
-                    <Link to={`/blog/${post.id}`} className="hover:underline">
-                      {post.title}
-                    </Link>
-                  </h2>
-                  <Link to={`/blog/${post.id}`} className="block mb-4">
-                    <div className="relative overflow-hidden rounded-lg aspect-video">
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <Badge variant="secondary">{post.category}</Badge>
-                      </div>
-                    </div>
-                  </Link>
-                  <p className="text-gray-700 leading-relaxed">
-                    {post.excerpt}
+            {/* Loading state */}
+            {loading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading blog posts...</p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {error && (
+              <div className="text-center py-12">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                  <p className="text-red-600">
+                    Error loading blog posts: {error}
                   </p>
-                  <Link
-                    to={`/blog/${post.id}`}
-                    className="inline-block mt-4 text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  <button
+                    onClick={fetchBlogPosts}
+                    className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                   >
-                    Read more →
-                  </Link>
-                </article>
-              ))}
-            </div>
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Blog posts section */}
+            {!loading && !error && (
+              <div className="space-y-12">
+                {blogPosts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600">No blog posts found.</p>
+                  </div>
+                ) : (
+                  blogPosts.map((post) => (
+                    <article key={post.id} className="group">
+                      <div className="mb-3">
+                        <span className="text-sm text-gray-500">
+                          {formatDate(post.date || post.created_at || "")} in{" "}
+                          {post.category}
+                        </span>
+                      </div>
+                      <h2 className="text-2xl font-semibold mb-4 group-hover:text-blue-600 transition-colors">
+                        <Link
+                          to={`/blog/${post.slug || post.id}`}
+                          className="hover:underline"
+                        >
+                          {post.title}
+                        </Link>
+                      </h2>
+                      <Link
+                        to={`/blog/${post.slug || post.id}`}
+                        className="block mb-4"
+                      >
+                        <div className="relative overflow-hidden rounded-lg aspect-video">
+                          <img
+                            src={
+                              post.image ||
+                              "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80"
+                            }
+                            alt={post.title}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute top-4 left-4">
+                            <Badge variant="secondary">{post.category}</Badge>
+                          </div>
+                        </div>
+                      </Link>
+                      <p className="text-gray-700 leading-relaxed">
+                        {post.excerpt}
+                      </p>
+                      <Link
+                        to={`/blog/${post.slug || post.id}`}
+                        className="inline-block mt-4 text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                      >
+                        Read more →
+                      </Link>
+                    </article>
+                  ))
+                )}
+              </div>
+            )}
 
             {/* Pagination placeholder */}
-            <div className="mt-16 text-center">
-              <div className="inline-flex space-x-2">
-                <button className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                  Previous
-                </button>
-                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
-                  1
-                </button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                  2
-                </button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                  3
-                </button>
-                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                  Next
-                </button>
+            {!loading && !error && blogPosts.length > 0 && (
+              <div className="mt-16 text-center">
+                <div className="inline-flex space-x-2">
+                  <button className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Previous
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+                    1
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    2
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    3
+                  </button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar */}
